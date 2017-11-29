@@ -1,5 +1,6 @@
-HARDLINKS_PROTECTION_CONFIG="fs.protected_hardlinks"
-SYMLINKS_PROTECTION_CONFIG="fs.protected_symlinks"
+FS_OPTIONS_DIR="/proc/sys/fs"
+HARDLINKS_PROTECTION_CONFIG="protected_hardlinks"
+SYMLINKS_PROTECTION_CONFIG="protected_symlinks"
 INSECURE_MODE=0
 
 MESSAGE="Insecure OS configuration detected - hardlinks/symlinks protection is not"
@@ -14,13 +15,16 @@ MESSAGE="$MESSAGE"
 ################################################################################
 verify_hardlinks_protection() {
     {
-        $SYSCTL $HARDLINKS_PROTECTION_CONFIG | $GREP "$HARDLINKS_PROTECTION_CONFIG = 1"
+        $CAT "$FS_OPTIONS_DIR/$HARDLINKS_PROTECTION_CONFIG" | $GREP "^1$" 2>/dev/null 1>&2
+    } || {
+        sysctl "fs.$HARDLINKS_PROTECTION_CONFIG" | $GREP "fs.$HARDLINKS_PROTECTION_CONFIG = 1" 2>/dev/null 1>&2
     } && {
         wrap_good "Hardlinks_protection" "Enabled"
-    } || {
-        wrap_warn "Hardlinks protection" "Not enabled"
-        INSECURE_MODE=1
+        return
     }
+
+    wrap_warn "Hardlinks protection" "Not enabled"
+    INSECURE_MODE=1
 }
 
 ################################################################################
@@ -28,13 +32,16 @@ verify_hardlinks_protection() {
 ################################################################################
 verify_symlinks_protection() {
     {
-        $SYSCTL $SYMLINKS_PROTECTION_CONFIG | $GREP "$SYMLINKS_PROTECTION_CONFIG = 1"
+        $CAT "$FS_OPTIONS_DIR/$SYMLINKS_PROTECTION_CONFIG" | $GREP "^1$" 2>/dev/null 1>&2
+    } || {
+        sysctl "fs.$SYMLINKS_PROTECTION_CONFIG" | $GREP "fs.$SYMLINKS_PROTECTION_CONFIG = 1" 2>/dev/null 1>&2
     } && {
         wrap_good "Symlinks protection" "Enabled"
-    } || {
-        wrap_warn "Symlinks protection" "Not enabled"
-        INSECURE_MODE=1
+        return
     }
+
+    wrap_warn "Symlinks protection" "Not enabled"
+    INSECURE_MODE=1
 }
 
 ################################################################################
@@ -53,7 +60,7 @@ validate_platform_security() {
 
     if [ $INSECURE_MODE -eq 1 ]
     then
-        add_to_warnings "$MESSAGE"
+        add_to_dependency_warnings "$MESSAGE"
         return
     fi
 }

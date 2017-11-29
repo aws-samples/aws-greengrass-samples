@@ -15,14 +15,14 @@ zgrep() {
     local match_pattern="$1"
     local kernel_config_file="$2"
 
-    $ZCAT "$kernel_config_file" | $GREP "$match_pattern"
+    $ZCAT "$kernel_config_file" | $GREP "$match_pattern" 2>/dev/null 1>&2
 }
 
 cat_and_grep() {
     local kernel_config_file="$1"
     local match_pattern="$2"
 
-    $CAT "$kernel_config_file" | $GREP "$match_pattern"
+    $CAT "$kernel_config_file" | $GREP "$match_pattern" 2>/dev/null 1>&2
 }
 
 ################################################################################
@@ -48,7 +48,7 @@ is_set_in_kernel() {
     local kernel_config="$1"
     local kernel_config_file="$2"
 
-    search "$kernel_config=y" "$kernel_config_file" > /dev/null
+    search "$kernel_config=y" "$kernel_config_file"
 }
 
 ################################################################################
@@ -58,7 +58,7 @@ is_set_as_module() {
     local kernel_config="$1"
     local kernel_config_file="$2"
 
-    search "$kernel_config=m" "$kernel_config_file" > /dev/null
+    search "$kernel_config=m" "$kernel_config_file"
 }
 
 ################################################################################
@@ -103,6 +103,7 @@ get_kernel_config_file() {
         message="$message\nFalling back to '/boot/config-$kernel_version' or"
         message="$message /proc/config.gz"
         warn "$message"
+        add_to_warnings "$message"
     else
         KERNEL_CONFIG_FILE="$user_provided_config_file"
         return
@@ -134,7 +135,7 @@ find_file_format() {
     local kernel_config_file="$1"
 
     {
-        echo "$kernel_config_file" | $GREP ".*\.gz$" >/dev/null 2>&1
+        echo "$kernel_config_file" | $GREP ".*\.gz$" 2>/dev/null 1>&2
     } && {
         FILE_IS_GZ=1
     } || {
@@ -195,13 +196,13 @@ check_kernel_configs() {
     ## Check if the kernel config file is valid.
     if [ "$KERNEL_CONFIG_FILE" = "" ]
     then
-        message="The file '/proc/config.gz' was not found."
-        message="$message Try loading the 'configs' module using\nthe command:"
-        message="$message 'sudo modprobe configs' and re-run the script"
-        message="$message 'check_gg_readiness.sh'\nor invoke the script with"
-        message="$message the option '--kernel-config-file <KERNEL_CONFIG_FILE>'"
-        fatal "$message"
-        add_to_fatals "$message"
+        message="The file '/proc/config.gz' was not found.\n"
+        message="$message\nTry loading the 'configs' module using the command:"
+        message="$message 'sudo modprobe configs' and re-run\nthe script"
+        message="$message 'check_ggc_dependencies' or invoke the script with"
+        message="$message the option\n'--kernel-config-file <KERNEL_CONFIG_FILE>'."
+        error "$message"
+        add_to_errors "$message"
         info ""
         return
     else
@@ -219,6 +220,6 @@ check_kernel_configs() {
     then
         message="The kernel is missing the following required configs:\n"
         message="$message$MISSING_CONFIGS_LIST"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
     fi
 }
