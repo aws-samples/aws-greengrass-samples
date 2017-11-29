@@ -19,14 +19,20 @@ readonly NC="\033[0m"    # No color
 ## Default verbosity
 VERBOSITY=$WARN
 
-## Exit code for the script 'check_gg_readiness.sh'
+## Exit code for the script
 SCRIPT_EXIT_CODE=0
 
-## Variables to track warnings and fatals.
+NOTES=""
 WARNINGS=""
-FATALS=""
+ERRORS=""
+DEPENDENCY_WARNINGS=""
+DEPENDENCY_FAILURES=""
+
+NOTES_COUNT=0
 WARNINGS_COUNT=0
-FATALS_COUNT=0
+ERRORS_COUNT=0
+DEPENDENCY_WARNINGS_COUNT=0
+DEPENDENCY_FAILURES_COUNT=0
 
 validate_and_set_verbosity() {
     local verbosity="$1"
@@ -89,7 +95,8 @@ log() {
 
 label() {
     local message="$1"
-    log $INFO $CYAN "$message" 0
+    local log_level="$2"
+    log $log_level $CYAN "$message" 0
 }
 
 header() {
@@ -99,7 +106,8 @@ header() {
 
 underline() {
     local message="$1"
-    log $INFO $WHITE_UNDERLINE "$message" 0
+    local log_level="$2"
+    log $log_level $WHITE_UNDERLINE "$message" 0
 }
 
 fatal() {
@@ -135,23 +143,38 @@ warn() {
 }
 
 wrap_good() {
-    label "$1: "
+    label "$1: " $INFO
     success "$2"
 }
 
 wrap_warn() {
-    label "$1: "
+    label "$1: " $WARN
     warn "$2"
 }
 
 wrap_bad() {
-    label "$1: "
-    error "$2"
+    label "$1: " $FATAL
+    fatal "$2"
 }
 
 wrap_info() {
-    label "$1: "
+    label "$1: " $INFO
     info "$2"
+}
+
+add_to_notes() {
+    local message="$1"
+
+    NOTES_COUNT=$($EXPR $NOTES_COUNT + 1)
+    NOTES="$NOTES\n$NOTES_COUNT. $message\n"
+}
+
+add_to_errors() {
+    local message="$1"
+
+    SCRIPT_EXIT_CODE=1
+    ERRORS_COUNT=$($EXPR $ERRORS_COUNT + 1)
+    ERRORS="$ERRORS\n$ERRORS_COUNT. $message\n"
 }
 
 add_to_warnings() {
@@ -161,45 +184,72 @@ add_to_warnings() {
     WARNINGS="$WARNINGS\n$WARNINGS_COUNT. $message\n"
 }
 
-add_to_fatals() {
+add_to_dependency_warnings() {
+    local message="$1"
+
+    DEPENDENCY_WARNINGS_COUNT=$($EXPR $DEPENDENCY_WARNINGS_COUNT + 1)
+    DEPENDENCY_WARNINGS="$DEPENDENCY_WARNINGS\n$DEPENDENCY_WARNINGS_COUNT. $message\n"
+}
+
+add_to_dependency_failures() {
     local message="$1"
 
     SCRIPT_EXIT_CODE=1
-    FATALS_COUNT=$($EXPR $FATALS_COUNT + 1)
-    FATALS="$FATALS\n$FATALS_COUNT. $message\n"
+    DEPENDENCY_FAILURES_COUNT=$($EXPR $DEPENDENCY_FAILURES_COUNT + 1)
+    DEPENDENCY_FAILURES="$DEPENDENCY_FAILURES\n$DEPENDENCY_FAILURES_COUNT. $message\n"
 }
 
 print_results() {
     local message
     local ggc_version="$1"
+    local missing_dependencies_count=0
 
     info ""
     info "------------------------------------Results-----------------------------------------"
-    if [ "$WARNINGS_COUNT" -ne 0 ]
+    if [ $NOTES_COUNT -ne 0 ]
     then
-        underline "Warnings:"
+        underline "Note:" $INFO
+        info "$NOTES"
+    fi
+
+    if [ $WARNINGS_COUNT -ne 0 ]
+    then
+        underline "Warnings:" $WARN
         warn "$WARNINGS"
     fi
 
-    if [ "$FATALS_COUNT" -ne 0 ]
+    if [ $ERRORS_COUNT -ne 0 ]
     then
-        underline "Missing requirements:"
-        fatal "$FATALS"
+        underline "Errors:" $ERROR
+        error "$ERRORS"
+    fi
+
+    if [ $DEPENDENCY_WARNINGS_COUNT -ne 0 ]
+    then
+        underline "Missing optional dependencies:" $WARN
+        warn "$DEPENDENCY_WARNINGS"
+    fi
+
+    if [ $DEPENDENCY_FAILURES_COUNT -ne 0 ]
+    then
+        underline "Missing required dependencies:" $FATAL
+        fatal "$DEPENDENCY_FAILURES"
     fi
 
     info ""
     info "----------------------------------Exit status---------------------------------------"
     if [ $SCRIPT_EXIT_CODE -ne 0 ]
     then
-        message="The device seems to be missing one or more of the required"
-        message="$message dependencies for\nGreengrass version $ggc_version."
-        message="$message Refer to the 'Missing requirements' section under\n'Results'"
-        message="$message for details.\n"
+        message="Either the script failed to verify all dependencies or the device"
+        message="$message is missing one or\nmore of the required"
+        message="$message dependencies for Greengrass version $ggc_version.\n"
+        message="$message\nRefer to the 'Errors' and 'Missing required dependencies'"
+        message="$message sections under 'Results'\nfor details."
         fatal "$message"
     else
-        message="You can now proceed to installing the Greengrass core software"
-        message="$message on the device.\nPlease reach out to the AWS Greengrass"
-        message="$message support if issues arise.\n"
+        message="You can now proceed to installing the Greengrass core $ggc_version"
+        message="$message software on the device.\nPlease reach out to the AWS"
+        message="$message Greengrass support if issues arise.\n"
         info "$message"
     fi
 

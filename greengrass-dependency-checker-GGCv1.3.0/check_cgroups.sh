@@ -2,65 +2,128 @@ CGROUPS_FILE="/proc/cgroups"
 MOUNTS_FILE="/proc/mounts"
 
 CGROUPS_NOT_SUPPORTED=0
-CGROUPS_NOT_ENABLED=0
 
 ################################################################################
 ## Checks if the kernel supports cgroups.
 ################################################################################
 check_kernel_supports_cgroups() {
-    if [ ! -f "$CGROUPS_FILE" ]; then
+    if [ ! -f "$CGROUPS_FILE" ]
+    then
         CGROUPS_NOT_SUPPORTED=1
     fi
 }
 
 ################################################################################
-## Checks if the 'devices' cgroup is enabled.
+## Checks if the 'devices' cgroup is enabled and mounted.
 ################################################################################
-check_devices_cgroup_enabled() {
-    local enabled_cgroups="$1"
+check_devices_cgroup_enabled_and_mounted() {
+    local cgroups_mount_dir="$1"
+    local message
+    local devices_cgroup
 
+    ## Enabled cgroups can be checked for from the output of 'cat /proc/cgroups':
+    ## alinux % cat /proc/cgroups
+    ## #subsys_name    hierarchy   num_cgroups enabled
+    ## cpuset  1   1   1
+    ## cpu     2   1   1
+    ## cpuacct 3   1   1
+    ## blkio   4   1   1
+    ## memory  5   1   1
+    ## devices 6   1   1
+    ## freezer 7   1   1
+    ## net_cls 8   1   1
+    ## perf_event  9   1   1
+    ## hugetlb 10  1   1
+    ##
+    ## A '1' in the fourth coulmn against a cgroup in the above output indicates
+    ## that the cgroup is enabled.
+    ##
+    ## In the below command,
+    ## !/^#/      => Filter non-comment lines.
+    ## ($4 == 1)  => Filter lines where the fourth column is '1'
+    ## print $1   => Print the first column (cgroup name) of each filtered line.
+    enabled_cgroups=$($AWK '!/^#/ { if ($4 == 1) print $1 }' $CGROUPS_FILE)
     {
         echo "$enabled_cgroups" | $GREP 'devices' 2>/dev/null 1>&2
     } || {
-        wrap_bad "Devices cgroup" "Not enabled"
-        CGROUPS_NOT_ENABLED=1
+        message="The 'devices' cgroup is not enabled on the device.\n"
+        message="$message\nGreengrass lambdas with Local Resource Access(LRA)"
+        message="$message configurations will not be allowed\nto open device files."
+        wrap_warn "Devices cgroup" "Not enabled"
+        add_to_dependency_warnings "$message"
+        return
     }
+
+    ## Check if the 'devices' cgroup is mounted.
+    ##
+    ## root@alinux:~# ls /sys/fs/cgroup
+    ## cgroup.clone_children  cgroup.sane_behavior  devices.list
+    ## cgroup.event_control   devices.allow         memory.failcnt
+    ## cgroup.procs           devices.deny          memory.force_empty
+    ## ..
+    ## ..
+    ##
+    ## root@alinux:~# ls /sys/fs/cgroup | grep devices
+    ## devices.allow
+    ## devices.deny
+    ## devices.list
+    ##
+    ## root@alinux:~# ls /sys/fs/cgroup | grep devices | wc -l
+    ## 3
+    devices_cgroup="$($LS "$cgroups_mount_dir" | $GREP "devices" | $WC -l)"
+    if [ $devices_cgroup -eq 0 ]
+    then
+        message="The 'devices' cgroup is not mounted on the device.\n"
+        message="$message\nGreengrass lambdas with Local Resource Access(LRA)"
+        message="$message configurations will not be allowed\nto open device files."
+        wrap_warn "Devices cgroup" "Not mounted"
+        add_to_dependency_warnings "$message"
+    else
+        wrap_good "Devices cgroup" "Enabled and Mounted"
+    fi
 }
 
 ################################################################################
-## Checks if the 'memory' cgroup is enabled.
+## Checks if the 'memory' cgroup is enabled and mounted.
 ################################################################################
-check_memory_cgroup_enabled() {
-    local enabled_cgroups="$1"
+check_memory_cgroup_enabled_and_mounted() {
+    local cgroups_mount_dir="$1"
+    local message
+    local memory_cgroup
 
+    enabled_cgroups=$($AWK '!/^#/ { if ($4 == 1) print $1 }' $CGROUPS_FILE)
     {
         echo "$enabled_cgroups" | $GREP 'memory' 2>/dev/null 1>&2
     } || {
+        message="The 'memory' cgroup is not enabled on the device."
+        message="$message\nGreengrass will fail to set the memory limit of user"
+        message="$message lambdas."
         wrap_bad "Memory cgroup" "Not enabled"
-        CGROUPS_NOT_ENABLED=1
+        add_to_dependency_failures "$message"
+        return
     }
+
+    memory_cgroup="$($LS "$cgroups_mount_dir" | $GREP "memory" | $WC -l)"
+    if [ $memory_cgroup -eq 0 ]
+    then
+        message="The 'memory' cgroup is not mounted on the device."
+        message="$message\nGreengrass will fail to set the memory limit of user"
+        message="$message lambdas."
+        wrap_bad "Memory cgroup" "Not mounted"
+        add_to_dependency_failures "$message"
+    else
+        wrap_good "Memory cgroup" "Enabled and Mounted"
+    fi
 }
 
 ################################################################################
-## Verifies that the 'devcies' and 'memory' cgroups are compiled into the kernel.
-##
-## This check is redundant, since we already check if cgroups-related kernel
-## configs are enabled - specifically, CONFIG_CGROUP_DEVICE and CONFIG_MEMCG.
+## Verifies that the 'devcies' and 'memory' cgroups are enabled and mounted.
 ################################################################################
-check_cgroups_enabled() {
-    local enabled_cgroups
+check_cgroups_enabled_and_mounted() {
+    local cgroups_mount_dir="$1"
 
-    {
-        enabled_cgroups=$($AWK '!/^#/ { if ($4 == 1) print $1 }' $CGROUPS_FILE)
-    } && {
-        check_devices_cgroup_enabled "$enabled_cgroups"
-    } && {
-        check_memory_cgroup_enabled "$enabled_cgroups"
-    } || {
-        error "Failed to check if all required cgroups are enabled"
-        add_to_fatals "Failed to check if all required cgroups are enabled"
-        return
-    }
+    check_devices_cgroup_enabled_and_mounted "$cgroups_mount_dir"
+    check_memory_cgroup_enabled_and_mounted "$cgroups_mount_dir"
 }
 
 ################################################################################
@@ -74,7 +137,6 @@ check_cgroups_mounted() {
     local memory_cgroup
 
     info "------------------------------------Cgroups check-----------------------------------"
-
     ## Check if the kernel supports cgroups.
     check_kernel_supports_cgroups
 
@@ -84,23 +146,13 @@ check_cgroups_mounted() {
         message="The kernel in use does NOT support cgroups. You will not be"
         message="$message able to run Greengrass\ncore without cgroups."
         fatal "$message"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
         info ""
         return
     fi
 
-    ## Check if the required cgroups are enabled.
-    check_cgroups_enabled
-
-    ## Do not proceed if all of the required cgroups are not enabled.
-    if [ $CGROUPS_NOT_ENABLED -eq 1 ]
-    then
-        error "One or more of the required cgroups is not enabled\n"
-        add_to_fatals "One or more of the required cgroups is not enabled"
-        info ""
-        return
-    fi
-
+    ## Find the directory where cgroups are mounted on the device.
+    ##
     ## Sample output for 'cat /proc/mounts':
     ## alinux % cat /proc/mounts
     ## proc /proc proc rw,relatime 0 0
@@ -151,11 +203,11 @@ check_cgroups_mounted() {
     ## Checking if cgroups_dir variable is set - i.e, if cgroups are mounted.
     if [ -z "$cgroups_dir" ]
     then
-        message="It looks like cgroups are not mounted on the device."
-        message="$message Refer to the official Greengrass\ndocumentation"
+        message="It looks like the cgroups directory is not mounted on the device."
+        message="$message\nRefer to the official Greengrass documentation"
         message="$message to fix this."
         fatal "$message"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
         info ""
         return
     fi
@@ -169,31 +221,8 @@ check_cgroups_mounted() {
     info "Cgroups mount directory: $cgroups_mount_dir"
     info ""
 
-    ## Check if the 'devices' cgroup is mounted
-    devices_cgroup="$($LS "$cgroups_mount_dir" | $GREP "devices" | $WC -l)"
-    if [ $devices_cgroup -eq 0 ]
-    then
-        message="The 'devices' cgroup is not mounted on the device. Greengrass"
-        message="$message lambdas with Local\nResource Access(LRA) configurations"
-        message="$message will not be allowed to open device files."
-        wrap_warn "Devices cgroup" "Not mounted"
-        add_to_warnings "$message"
-    else
-        wrap_good "Devices cgroup" "Mounted"
-    fi
-
-    ## Check if the 'memory' cgroup is mounted
-    memory_cgroup="$($LS "$cgroups_mount_dir" | $GREP "memory" | $WC -l)"
-    if [ $memory_cgroup -eq 0 ]
-    then
-        message="The 'memory' cgroup is not mounted on the device."
-        message="$message Greengrass will fail to set\nthe memory limit of user"
-        message="$message lambdas."
-        wrap_bad "Memory cgroup" "Not mounted"
-        add_to_fatals "$message"
-    else
-        wrap_good "Memory cgroup" "Mounted"
-    fi
+    ## Check if the required cgroups are enabled and mounted.
+    check_cgroups_enabled_and_mounted "$cgroups_mount_dir"
 
     info ""
 }

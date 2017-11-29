@@ -27,7 +27,7 @@ check_sqlite_version() {
         sqlite_version_info="$(sqlite$REQUIRED_SQLITE_VERSION -version 2>/dev/null)"
     } || {
         wrap_bad "SQLite $REQUIRED_SQLITE_VERSION" "Not found"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
         return
     }
 
@@ -39,7 +39,7 @@ check_sqlite_version() {
         message="Failed to extract the SQLite version from the string: "
         message="$message '$sqlite_version_info'"
         error "$message"
-        add_to_fatals "$message"
+        add_to_errors "$message"
     fi
 }
 
@@ -63,7 +63,7 @@ check_python_version() {
         python$REQUIRED_PYTHON_VERSION --version >/dev/null 2>&1
     } || {
         wrap_warn "Python $REQUIRED_PYTHON_VERSION" "Not found"
-        add_to_warnings "$message"
+        add_to_dependency_warnings "$message"
         return
     }
 
@@ -75,8 +75,8 @@ check_python_version() {
     else
         message="Failed to extract the Python version from the string:"
         message="$message '$python_version_info'"
-        error "$message"
-        add_to_fatals "$message"
+        warn "$message"
+        add_to_warnings "$message"
     fi
 }
 
@@ -99,7 +99,7 @@ check_nodejs_version() {
         node_version_info="$(nodejs$REQUIRED_NODEJS_VERSION --version 2>/dev/null)"
     } || {
         wrap_warn "NodeJS $REQUIRED_NODEJS_VERSION" "Not found"
-        add_to_warnings "$message"
+        add_to_dependency_warnings "$message"
         return
     }
 
@@ -109,8 +109,8 @@ check_nodejs_version() {
         wrap_good "NodeJS version" "$node_version"
     else
         message="Failed to extract the NodeJS version from the string: '$node_version_info'"
-        error "$message"
-        add_to_fatals "$message"
+        warn "$message"
+        add_to_warnings "$message"
     fi
 }
 
@@ -124,8 +124,8 @@ extract_java_version() {
         JAVA_VERSION="$(echo "$java_version_info" | $HEAD -n 1 | $GREP -o "[_0-9\.]*")"
     } || {
         message="Failed to extract the Java version from the string: '$java_version_info'"
-        error "$message"
-        add_to_fatals "$message"
+        warn "$message"
+        add_to_warnings "$message"
     }
     
 }
@@ -151,7 +151,7 @@ check_java_version() {
         java$REQUIRED_JAVA_VERSION -version >/dev/null 2>&1
     } || {
         wrap_warn "Java $REQUIRED_JAVA_VERSION" "Not found"
-        add_to_warnings "$message"
+        add_to_dependency_warnings "$message"
         return
     }
 
@@ -162,8 +162,8 @@ check_java_version() {
         wrap_good "Java version" "$JAVA_VERSION"
     else
         message="Failed to extract the Java version from the string: '$java_version_info'"
-        error "$message"
-        add_to_fatals "$message"
+        warn "$message"
+        add_to_warnings "$message"
     fi
 }
 
@@ -302,7 +302,7 @@ get_openssl_version_using_ldconfig() {
     local ldconfig_output
 
     {
-        ldconfig_output="$(ldconfig -p | $GREP libssl)"
+        ldconfig_output="$(ldconfig -p 2>/dev/null | $GREP libssl)"
     } && {
         ldconfig_output="$(echo "$ldconfig_output" | $CUT -d" " -f 4)"
         process_libssl_paths "$ldconfig_output"
@@ -340,7 +340,7 @@ check_openssl_version() {
         message="$message : /lib, /usr/lib and /usr/local/lib.\n"
         message="$message\nThe Over The Air(OTA) agent requires OpenSSL version"
         message="$message $MINIMUM_REQUIRED_OPENSSL_VERSION or later to run."
-        add_to_warnings "$message"
+        add_to_dependency_warnings "$message"
         return
     fi
 
@@ -359,29 +359,26 @@ check_if_command_present() {
         command -v $cmd 2>/dev/null 1>&2 && wrap_good "$cmd" "Present"
     } || {
         wrap_warn "$cmd" "Not found"
-        add_to_warnings "$message"
+        add_to_dependency_warnings "$message"
     }
 }
 
 ################################################################################
-## Checks if the command 'wget' is present on the device.
+## Checks if the software packages and commands required for the Over The
+## Air(OTA) agent are present on the device.
 ################################################################################
-check_wget_present() {
+check_ota_agent_req() {
+    check_openssl_version
     check_if_command_present "wget"
-}
-
-################################################################################
-## Checks if the command 'realpath' is present on the device.
-################################################################################
-check_realpath_present() {
     check_if_command_present "realpath"
-}
-
-################################################################################
-## Checks if the command 'tar' is present on the device.
-################################################################################
-check_tar_present() {
     check_if_command_present "tar"
+    check_if_command_present "readlink"
+    check_if_command_present "basename"
+    check_if_command_present "dirname"
+    check_if_command_present "pidof"
+    check_if_command_present "df"
+    check_if_command_present "grep"
+    check_if_command_present "umount"
 }
 
 check_sw_packages() {
@@ -390,8 +387,5 @@ check_sw_packages() {
     check_python_version
     check_nodejs_version
     check_java_version
-    check_openssl_version
-    check_wget_present
-    check_realpath_present
-    check_tar_present
+    check_ota_agent_req
 }

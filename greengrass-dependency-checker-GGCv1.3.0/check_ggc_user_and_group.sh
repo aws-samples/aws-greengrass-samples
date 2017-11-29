@@ -11,7 +11,7 @@ check_ggc_user_exists() {
     local message
 
     {
-        $GREP "^$GGC_USER:" "$USER_CONFIG_FILE" 1>/dev/null 2>&1
+        $GREP "^$GGC_USER:" "$USER_CONFIG_FILE" 2>/dev/null 1>&2
     } && {
         wrap_good "$GGC_USER" "Present"
     } || {
@@ -19,7 +19,7 @@ check_ggc_user_exists() {
         message="$message present on the device.\nRefer to the official Greengrass"
         message="$message documentation to fix this."
         wrap_bad "User $GGC_USER" "Not found"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
     }
 }
 
@@ -30,7 +30,7 @@ check_ggc_group_exists() {
     local message
 
     {
-        $GREP "^$GGC_GROUP:" "$GROUP_CONFIG_FILE" 1>/dev/null 2>&1
+        $GREP "^$GGC_GROUP:" "$GROUP_CONFIG_FILE" 2>/dev/null 1>&2
     } && {
         wrap_good "$GGC_GROUP" "Present"
     } || {
@@ -38,7 +38,7 @@ check_ggc_group_exists() {
         message="$message present on the device.\nRefer to the official Greengrass"
         message="$message documentation to fix this."
         wrap_bad "Group $GGC_GROUP" "Not found"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
     }
 }
 

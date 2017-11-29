@@ -13,19 +13,18 @@
 ## 7. zcat
 ## 8. awk
 ## 9. sed
-## 10. sysctl
-## 11. wc
-## 12. cut
-## 13. sort
-## 14. expr
-## 15. grep
-## 16. test
-## 17. dirname
-## 18. readlink
-## 19. xargs
-## 20. uniq
-## 21. strings
-## 22. id
+## 10. wc
+## 11. cut
+## 12. sort
+## 13. expr
+## 14. grep
+## 15. test
+## 16. dirname
+## 17. readlink
+## 18. xargs
+## 19. uniq
+## 20. strings
+## 21. id
 ##
 ## Shell commands not supported by Busybox and required to be present on the device:
 ## 1. eval
@@ -44,7 +43,6 @@ FIND="find"
 ZCAT="zcat"
 AWK="awk"
 SED="sed"
-SYSCTL="sysctl"
 WC="wc"
 CUT="cut"
 SORT="sort"
@@ -203,21 +201,6 @@ check_sed_present() {
         }
     } || {
         wrap_bad "sed" "Not found"
-        DEPENDENCIES_PRESENT=0
-    }
-}
-
-check_sysctl_present() {
-    {
-        command -v sysctl 2>/dev/null 1>&2
-    } || {
-        {
-            busybox sysctl --help 2>/dev/null 1>&2
-        } && {
-            SYSCTL="busybox sysctl"
-        }
-    } || {
-        wrap_bad "sysctl" "Not found"
         DEPENDENCIES_PRESENT=0
     }
 }
@@ -448,7 +431,6 @@ check_commands_present() {
     check_zcat_present
     check_awk_present
     check_sed_present
-    check_sysctl_present
     check_wc_present
     check_cut_present
     check_sort_present
@@ -478,7 +460,7 @@ check_root_user() {
 }
 
 check_script_dependencies() {
-    echo "==========================Checking script dependencies=============================="
+    info "==========================Checking script dependencies=============================="
     check_commands_present
     if [ $DEPENDENCIES_PRESENT -eq 0 ]
     then

@@ -18,21 +18,6 @@ get_kernel_architecture() {
 
     local kernel_architecture="$($UNAME -m)"
     wrap_info "Kernel architecture" "$kernel_architecture"
-
-    message="Check on the AWS IoT console if a Greengrass binary is available for"
-    message="$message the kernel\narchitecture: $kernel_architecture"
-    add_to_warnings "$message"
-}
-
-################################################################################
-## Warns about the minimum memory and CPU requirements.
-################################################################################
-print_cpu_and_memory_req() {
-    local message
-
-    message="Ensure that the device has at least a 1GHz CPU and 128MB of RAM"
-    message="$message (more, depending\non the use case)."
-    add_to_warnings "$message"
 }
 
 ################################################################################
@@ -48,12 +33,12 @@ check_if_systemd() {
         message="$message. Be sure to set the\n'useSystemd' field in the file"
         message="$message 'config.json' to 'yes' when configuring Greengrass"
         message="$message core."
-        add_to_warnings "$message"
+        add_to_notes "$message"
     } || {
         message="It looks like the kernel does NOT use 'systemd' as the init process"
         message="$message. Be sure to set\nthe 'useSystemd' field in the file"
         message="$message 'config.json' to 'no' when configuring Greengrass\ncore."
-        add_to_warnings "$message"
+        add_to_notes "$message"
     }
 }
 
@@ -80,10 +65,10 @@ get_init_process() {
     ## alinux % sudo readlink /proc/1/exe
     ## /sbin/init
     { #try
-        init_process="$($READLINK /proc/1/exe)" && $TEST -n "$init_process"
+        init_process="$($READLINK /proc/1/exe 2>/dev/null)" && $TEST -n "$init_process"
     } || { #catch
         error "Failed to find the init process on the host!"
-        add_to_fatals "Failed to find the init process on the host"
+        add_to_errors "Failed to find the init process on the host"
         return
     }
 
@@ -106,12 +91,12 @@ check_kernel_version() {
     compare_versions "$kernel_version" "$MINIMUM_REQUIRED_KERNEL_VERSION"
     if [ $GREATER_OR_EQUALS -ne 1 ]
     then
-        wrap_warn "Kernel version" "$kernel_version"
         local message="Greengrass runs most optimally with a Linux kernel"
         message="$message version $MINIMUM_REQUIRED_KERNEL_VERSION or greater."
         message="$message The Linux\nkernel version on the device is"
         message="$message $kernel_version."
-        add_to_warnings "$message"
+        wrap_warn "Kernel version" "$kernel_version"
+        add_to_dependency_warnings "$message"
         return
     fi
 
@@ -140,33 +125,34 @@ parse_ldd_output() {
 
     ## Find the C library - find a string enclosed in parathesis
     {
-        c_library="$(echo $ldd_output | $GREP -o '(.*)')"
+        c_library="$(echo "$ldd_output" | $GREP -o '(.*)')"
     } && {
         remove_parantheses "$c_library"
         C_LIBRARY="$STRING_WITHOUT_PARATHESIS"
     } || {
-        fatal "Failed to find the C library used on the host"
-        add_to_fatals "Failed to find the C library used on the host"
+        ## Do not log the error here. The error will be caught in the parent
+        ## function by testing for an empty C_LIBRARY.
         return
     }
 
     ## Extract the C library version - find the string after the last space on
     ## line.
     {
-        C_LIBRARY_VERSION="$(echo $ldd_output | $GREP -o '[^ ]*$')"
+        C_LIBRARY_VERSION="$(echo "$ldd_output" | $GREP -o '[^ ]*$')"
     } || {
-        fatal "Failed to find the version of C library used on the host"
-        add_to_fatals "Failed to find the version of C library used on the host"
+        ## Do not log the error here. The error will be caught in the parent
+        ## function by testing for an empty C_LIBRARY_VERSION.
+        return
     }
 }
 
 ################################################################################
 ## Extracts the C library info from the output of executing libc.so.6
 ##
-## ubuntu@ip-10-0-255-214:~$ find /lib* -executable -name libc.so.6
+## ubuntu@dev-box:~$ find /lib* -name libc.so.6
 ## /lib/x86_64-linux-gnu/libc.so.6
 ##
-## ubuntu@ip-10-0-255-214:~$ /lib/x86_64-linux-gnu/libc.so.6
+## ubuntu@dev-box:~$ /lib/x86_64-linux-gnu/libc.so.6
 ## GNU C Library (Ubuntu GLIBC 2.23-0ubuntu9) stable release version 2.23, by Roland McGrath et al.
 ## Copyright (C) 2016 Free Software Foundation, Inc.
 ## ...
@@ -190,8 +176,8 @@ parse_libc_output() {
         remove_parantheses "$c_library"
         C_LIBRARY="$STRING_WITHOUT_PARATHESIS"
     } || {
-        error "Failed to find the C library used on the device"
-        add_to_fatals "Failed to find the C library used on the device"
+        ## Do not log the error here. The error will be caught in the parent
+        ## function by testing for an empty C_LIBRARY.
         return
     }
 
@@ -201,8 +187,8 @@ parse_libc_output() {
     {
         C_LIBRARY_VERSION="$(echo $libc_output | $GREP -o "version [0-9\.]*")"
     } || {
-        error "Failed to find the version of C library used on the device"
-        add_to_fatals "Failed to find the version of C library used on the device"
+        ## Do not log the error here. The error will be caught in the parent
+        ## function by testing for an empty C_LIBRARY_VERSION.
         return
     }
 
@@ -210,20 +196,18 @@ parse_libc_output() {
 }
 
 ################################################################################
-## Extracts the C library info from the output of executing libc.so.6
+## Finds and executes the C library shared object file (libc.so.6). If libc.so.6
+## is not found in the standard paths, the device could be using an old version
+## of C library - libc.so.5 or older.
 ##
-## ubuntu@ip-10-0-255-214:~$ find /lib* -executable -name libc.so.6
+## ubuntu@dev-box:~$ find /lib* -name libc.so.6
 ## /lib/x86_64-linux-gnu/libc.so.6
 ##
-## ubuntu@ip-10-0-255-214:~$ /lib/x86_64-linux-gnu/libc.so.6
+## ubuntu@dev-box~$ /lib/x86_64-linux-gnu/libc.so.6
 ## GNU C Library (Ubuntu GLIBC 2.23-0ubuntu9) stable release version 2.23, by Roland McGrath et al.
 ## Copyright (C) 2016 Free Software Foundation, Inc.
 ## ...
 ## ...
-##
-## Given the sample output above, this function would return:
-## C_LIBRARY="Ubuntu GLIBC 2.23-0ubuntu9"
-## C_LIBRARY_VERSION="2.23"
 ################################################################################
 get_libc_info_from_executable() {
     local message
@@ -239,9 +223,9 @@ get_libc_info_from_executable() {
         libc_info="$($libc_path)"
     } || {
         message="Failed to find the version of C library running on the device."
-        message="$message You could be using a\nvery old version of C library."
+        message="$message\nYou could be using a very old version of C library."
         error "$message"
-        add_to_fatals "$message"
+        add_to_errors "$message"
         return
     }
 
@@ -250,8 +234,8 @@ get_libc_info_from_executable() {
 }
 
 ################################################################################
-## Check the version of the C library. Greengrass core requires version 2.14 or
-## later.
+## Checks if the version of C library on the device meets the Greengrass core
+## requirements.
 ################################################################################
 check_libc_version() {
     local message
@@ -266,7 +250,7 @@ check_libc_version() {
         wrap_bad "C library version" "$libc_version"
         message="Greengrass requires C library version"
         message="$message $MINIMUM_REQUIRED_LIBC_VERSION or greater to run"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
         return
     fi
 
@@ -285,14 +269,14 @@ get_libc_info() {
         get_libc_info_from_executable
     } || {
         error "Could not find the version of C library running on the device"
-        add_to_fatals "Could not find the version of C library running on the device"
+        add_to_errors "Could not find the version of C library running on the device"
         return
     }
 
     if [ "$C_LIBRARY" = "" -o "$C_LIBRARY_VERSION" = "" ]
     then
         error "Failed to find information about the C library running on the device"
-        add_to_fatals "Failed to find information about the C library running on the device"
+        add_to_errors "Failed to find information about the C library running on the device"
     else
         wrap_info "C library" "$C_LIBRARY"
         check_libc_version "$C_LIBRARY_VERSION"
@@ -314,7 +298,7 @@ check_var_run_present() {
         message="Greengrass core requires the directory '/var/run' to be present"
         message="$message on the device.\nGreengrass core will otherwise fail"
         message="$message to start."
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
     fi
 }
 
@@ -329,13 +313,13 @@ check_if_dev_stdio_file_exists() {
 
     if [ ! -e "$file_path" ]
     then
-        message="Failed to find the file '$file_path' on the device."
+        message="Failed to find the file '$file_path' on the device.\n"
         message="$message\nCreate the file using the command 'ln -s $symlink_target"
         message="$message $file_path'. The symlink\nis not persistent across reboot,"
         message="$message so the command will need to be added to the boot\nsequence"
         message="$message for the device."
         wrap_bad "$file_path" "Not found"
-        add_to_fatals "$message"
+        add_to_dependency_failures "$message"
         return
     fi
 
@@ -351,7 +335,6 @@ check_dev_std_files_exist() {
 check_system_configs() {
     header "System configuration:"
     get_kernel_architecture
-    print_cpu_and_memory_req
     get_init_process
     check_kernel_version
     get_libc_info
