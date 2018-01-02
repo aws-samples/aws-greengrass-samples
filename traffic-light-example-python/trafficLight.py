@@ -193,9 +193,13 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 streamHandler.setFormatter(formatter)
 logger.addHandler(streamHandler)
 
-# In this example we will always do discovery regardless of if discovery was done before
+# Run Discovery service to check which GGC to connect to, if it hasn't been run already
 # Discovery talks with the IoT cloud to get the GGC CA cert and ip address
-#discoverGGC(host, iotCAPath, certificatePath, privateKeyPath, clientId)
+
+if not os.path.isfile('./groupCA/root-ca.crt'):
+    discoverGGC(host, iotCAPath, certificatePath, privateKeyPath, clientId)
+else:
+    print("Greengrass core has already been discovered.")
 
 # read GGC Host Address from file
 ggcAddrPath = GROUP_PATH + GGC_ADDR_NAME
