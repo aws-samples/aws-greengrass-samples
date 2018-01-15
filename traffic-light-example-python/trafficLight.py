@@ -69,8 +69,8 @@ def customShadowCallback_Delta(payload, responseStatus, token):
 	
 	print("Light changed to: " + light)
 	JSONPayload = '{"state":{"reported":{"property":' + '"' + light + '"}}}'
-        print(JSONPayload)
-        deviceShadowHandler.shadowUpdate(JSONPayload, customShadowCallback_Update, 5)
+	print(JSONPayload)
+	deviceShadowHandler.shadowUpdate(JSONPayload, customShadowCallback_Update, 5)
 
 # function does basic regex check to see if value might be an ip address
 def isIpAddress(value):
