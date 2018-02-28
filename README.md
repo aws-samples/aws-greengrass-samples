@@ -10,6 +10,12 @@ This folder contains tools that help you check for system-level dependencies tha
 Refer to the requirements outlined in the Greengrass Documentation, as well as the Greengrass Getting Started Guide, Module 1:
 http://docs.aws.amazon.com/greengrass/latest/developerguide/gg-gs.html
 
+## greengrass-modbus-adapter-python
+
+This folder contains a sample Python Lambda function that will that will connect to a preconfigured modbus server and monitor coils for change. If the monitored values change, the Lambda function sends a message to a specific MQTT topic.
+Refer to the pymodbus documentation: https://pymodbus.readthedocs.io/en/latest/.
+Refer to the OPC/UA example: http://docs.aws.amazon.com/greengrass/latest/developerguide/opcua.html
+
 ## hello-world-python
 
 This folder contains a sample Lambda function that uses the Greengrass SDK to publish a HelloWorld message to AWS IoT.
