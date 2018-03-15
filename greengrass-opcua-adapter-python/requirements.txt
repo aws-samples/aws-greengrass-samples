@@ -1,0 +1,8 @@
+enum34==1.1.6
+futures==3.2.0
+lxml==4.1.1
+opcua==0.95.1
+python-dateutil==2.7.0
+pytz==2018.3
+six==1.11.0
+trollius==2.2
