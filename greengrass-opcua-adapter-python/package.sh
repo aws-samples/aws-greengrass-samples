@@ -54,7 +54,8 @@ if [ -f "${PYTHON}" ]; then
 
         # Remove the lib directory
         if [ $? -eq 0 ]; then
-            rm -rf ${TEMP_PKG_DIR} >/dev/null 2>&1
+            echo "All done. Cleaning up..."
+            # rm -rf ${TEMP_PKG_DIR} >/dev/null 2>&1
         fi
     else
         echo "${basename}: pip package manager not found!" >& 2
