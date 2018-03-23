@@ -30,3 +30,7 @@ Refer to the Greengrass Getting Started Guide, Modules 5 and 6: http://docs.aws.
 
 This folder contains a sample NodeJS Lambda function that will that will connect to a preconfigured list of OPC-UA servers, and monitored configured NodeIds for change. If a monitor node's value changes, this lambda get notified, and republishes that value change onto a specific topic.
 Refer to this documentation page for more details: http://docs.aws.amazon.com/greengrass/latest/developerguide/opcua.html
+
+## ml-at-edge-examples
+
+This folder contains the machine learning resources. It includes pre-built libraries for MxNet and Tensorflow on three edge devicesd: RaspBerry Pi2, Nvidia Jetson TX2 and AWS DeepLens. It also includes examples for machine learning inference on these devices.
