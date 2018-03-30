@@ -98,7 +98,7 @@ present on the device:
 * command
 * read
 
-### Greengrass core v1.3 dependencies
+### Greengrass core v1.5 dependencies
 
 * Kernel version should be `4.4 or greater` with OverlayFS enabled. The script
 will warn if the kernel version is older than `4.4`.
