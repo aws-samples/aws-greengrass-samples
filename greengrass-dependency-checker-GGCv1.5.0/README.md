@@ -1,7 +1,7 @@
-# Greengrass core v1.3 dependencies checker
+# Greengrass core v1.5 dependencies checker
 
 The script 'check\_ggc\_dependencies' verifies if the host device has all the
-dependencies required to run Greengrass core v1.3.
+dependencies required to run Greengrass core v1.5.
 
 
 **Note**
