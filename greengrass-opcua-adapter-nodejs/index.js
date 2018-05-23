@@ -4,6 +4,8 @@ require('requirish')._(module);
 const Subscriber = require('subscriber');
 const opcua = require('node-opcua');
 const IotData = require('aws-greengrass-core-sdk').IotData;
+const MessageSecurityMode = require("node-opcua-service-secure-channel").MessageSecurityMode;
+const SecurityPolicy = require("node-opcua-secure-channel").SecurityPolicy;
 
 const device = new IotData();
 
