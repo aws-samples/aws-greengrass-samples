@@ -1,5 +1,7 @@
 {
     "dependencies" : {
-        "node-opcua" : "0.0.64"
+        "node-opcua" : "0.0.64",
+        "node-opcua-secure-channel": "^0.3.0",
+        "node-opcua-service-secure-channel": "^0.3.0"
     }
 }
