@@ -166,7 +166,6 @@ otherwise.
   for further information.
 
 * **Over The Air(OTA) agent requirements**
-  * `OpenSSL version 1.0.1 or greater`
   * Shell commands: (not the BusyBox variants)
      * `wget`
      * `realpath`
