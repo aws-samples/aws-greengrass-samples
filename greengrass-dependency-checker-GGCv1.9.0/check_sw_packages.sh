@@ -1,6 +1,7 @@
 JAVA_VERSION=""
-REQUIRED_PYTHON_VERSION="2.7"
-REQUIRED_NODEJS_VERSION="6.10"
+REQUIRED_PYTHON2_VERSION="2.7"
+REQUIRED_PYTHON3_VERSION="3.7"
+REQUIRED_NODEJS_VERSION="8.10"
 REQUIRED_JAVA_VERSION="8"
 
 no_op() {
@@ -8,34 +9,71 @@ no_op() {
 }
 
 ################################################################################
-## Checks if Python is installed on the device and if installed, whether its
+## Checks if Python 2.7 is installed on the device and if installed, whether its
 ## version meets the requirement for Greengrass lambdas.
 ################################################################################
-check_python_version() {
+check_python2_version() {
     local python_version_info
     local python_version
-    local message="Could not find the binary 'python$REQUIRED_PYTHON_VERSION'.\n"
-    message="$message\nIf Python $REQUIRED_PYTHON_VERSION is installed on the"
-    message="$message device, name the binary 'python$REQUIRED_PYTHON_VERSION'"
+    local message="Could not find the binary 'python$REQUIRED_PYTHON2_VERSION'.\n"
+    message="$message\nIf Python $REQUIRED_PYTHON2_VERSION is installed on the"
+    message="$message device, name the binary 'python$REQUIRED_PYTHON2_VERSION'"
     message="$message and add its parent \ndirectory to the PATH environment variable."
-    message="$message Python $REQUIRED_PYTHON_VERSION is required to execute Python"
+    message="$message Python $REQUIRED_PYTHON2_VERSION is required to execute Python 2.7"
     message="$message\nlambdas on Greengrass core."
 
     {
         ## Python reports the version to STDERR, so have to redirect STDERR to
         ## STDOUT and not capture the output in a variable.
-        python$REQUIRED_PYTHON_VERSION --version >/dev/null 2>&1
+        python$REQUIRED_PYTHON2_VERSION --version >/dev/null 2>&1
     } || {
-        wrap_warn "Python $REQUIRED_PYTHON_VERSION" "Not found"
+        wrap_warn "Python $REQUIRED_PYTHON2_VERSION" "Not found"
         add_to_dependency_warnings "$message"
         return
     }
 
-    python_version_info="$(python$REQUIRED_PYTHON_VERSION --version 2>&1)"
+    python_version_info="$(python$REQUIRED_PYTHON2_VERSION --version 2>&1)"
     python_version="$(echo $python_version_info | $CUT -d" " -f2)"
     if [ -n "$python_version_info" ]
     then
-        wrap_good "Python version" "$python_version"
+        wrap_good "Python 2.7 version" "$python_version"
+    else
+        message="Failed to extract the Python version from the string:"
+        message="$message '$python_version_info'"
+        warn "$message"
+        add_to_warnings "$message"
+    fi
+}
+
+################################################################################
+## Checks if Python 3.7 is installed on the device and if installed, whether its
+## version meets the requirement for Greengrass lambdas.
+################################################################################
+check_python3_version() {
+    local python_version_info
+    local python_version
+    local message="Could not find the binary 'python$REQUIRED_PYTHON3_VERSION'.\n"
+    message="$message\nIf Python $REQUIRED_PYTHON3_VERSION is installed on the"
+    message="$message device, name the binary 'python$REQUIRED_PYTHON3_VERSION'"
+    message="$message and add its parent \ndirectory to the PATH environment variable."
+    message="$message Python $REQUIRED_PYTHON3_VERSION is required to execute Python 3.7"
+    message="$message\nlambdas on Greengrass core."
+
+    {
+        ## Python reports the version to STDERR, so have to redirect STDERR to
+        ## STDOUT and not capture the output in a variable.
+        python$REQUIRED_PYTHON3_VERSION --version >/dev/null 2>&1
+    } || {
+        wrap_warn "Python $REQUIRED_PYTHON3_VERSION" "Not found"
+        add_to_dependency_warnings "$message"
+        return
+    }
+
+    python_version_info="$(python$REQUIRED_PYTHON3_VERSION --version 2>&1)"
+    python_version="$(echo $python_version_info | $CUT -d" " -f2)"
+    if [ -n "$python_version_info" ]
+    then
+        wrap_good "Python 3.7 version" "$python_version"
     else
         message="Failed to extract the Python version from the string:"
         message="$message '$python_version_info'"
@@ -166,7 +204,8 @@ check_ota_agent_req() {
 
 check_sw_packages() {
     info "----------------------------Commands and software packages--------------------------"
-    check_python_version
+    check_python2_version
+    check_python3_version
     check_nodejs_version
     check_java_version
     check_ota_agent_req

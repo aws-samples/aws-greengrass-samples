@@ -138,12 +138,16 @@ otherwise.
     * CONFIG_SHMEM
 
 * **Software packages**
-  * `Python 2.7`  
-  Required if Python lambdas are used. The binary must be named 'python2.7'
+  * `Python 2.7 or Python 3.7`  
+  Required if Python lambdas are used. The binaries must be named 'python2.7'
+  and 'python3.7' respectively and the parent directory must be added to the 
+  PATH environment variable.
+  * `NodeJS 8.10 or greater`  
+  Required if NodeJS lambdas are used. The binary must be named 'nodejs8.10'
   and the parent directory must be added to the PATH environment variable.
-  * `NodeJS 6.10 or greater`  
-  Required if NodeJS lambdas are used. The binary must be named 'nodejs6.10'
-  and the parent directory must be added to the PATH environment variable.
+  (Existing Lambda functions that use Node.js 6.10 runtime can still run on 
+  Greengrass core, but they can’t be updated after 5/30/2019. Please refer 
+  to [AWS Lambda Runtimes Support Policy](https://docs.aws.amazon.com/lambda/latest/dg/runtime-support-policy.html).)
   * `Java 8 or greater`  
   Required if Java lambdas are used. The binary must be named 'java8' and
   the parent directory must be added to the PATH environment variable.
