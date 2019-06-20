@@ -123,9 +123,29 @@ sanitize_version_string() {
     local full_version="$1"
 
     ## Extract the major and minor version from the full version.
-    ## Eg: 4.1.3+ is converted to 4.1
+    ## Eg: 4.1.3+ is converted to 4.1.3
     major_version="${full_version%%.*}"
+
     minor_version="${full_version#$major_version.}"
     minor_version="${minor_version%%.*}"
-    SANITIZED_VERSION_STRING="$major_version.$minor_version"
+
+    patch_version="${full_version##$major_version.$minor_version.}"
+    if [[ "$full_version" = "$patch_version" ]]
+    then
+        patch_version="0"
+    else
+        # Remove dot "." if in front of patch version
+        patch_version="${patch_version#.}"
+        # Remove everything after the patch version number
+        patch_version="${patch_version%%[^0-9]*}"
+    fi
+
+    SANITIZED_VERSION_STRING="$major_version.$minor_version.$patch_version"
 }
+
+lower_case_string() {
+    local upper="$1"
+
+    LOWER_CASE_STRING=$(echo ${upper} | $AWK '{print tolower($0)}')
+}
+

@@ -1,10 +1,15 @@
 MINIMUM_REQUIRED_KERNEL_VERSION="3.17"
 MINIMUM_RECOMMENDED_KERNEL_VERSION="4.4"
-MINIMUM_REQUIRED_LIBC_VERSION="2.14"
+MINIMUM_REQUIRED_GLIBC_VERSION="2.14"
+MINIMUM_REQUIRED_MUSL_LIBC_VERSION="1.1.16"
 
 C_LIBRARY=""
 C_LIBRARY_VERSION=""
+DEVICE_OS=""
 
+OPENWRT="openwrt"
+GLIBC_PATTERN="glib"
+MUSL_LIBC_PATTERN="musl"
 ################################################################################
 ## Prints the kernel architecture.
 ##
@@ -133,30 +138,24 @@ check_kernel_version() {
 parse_ldd_output() {
     local libc_info="$1"
 
+    parse_libc_output "$libc_info"
+
     ## Extract the first line from the output
     local ldd_output="$(echo "$libc_info" | $HEAD -n 1)"
 
-    ## Find the C library - find a string enclosed in parathesis
-    {
-        c_library="$(echo "$ldd_output" | $GREP -o '(.*)')"
-    } && {
-        remove_parantheses "$c_library"
-        C_LIBRARY="$STRING_WITHOUT_PARATHESIS"
-    } || {
-        ## Do not log the error here. The error will be caught in the parent
-        ## function by testing for an empty C_LIBRARY.
-        return
-    }
-
-    ## Extract the C library version - find the string after the last space on
-    ## line.
-    {
-        C_LIBRARY_VERSION="$(echo "$ldd_output" | $GREP -o '[^ ]*$')"
-    } || {
-        ## Do not log the error here. The error will be caught in the parent
-        ## function by testing for an empty C_LIBRARY_VERSION.
-        return
-    }
+    lower_case_string "$ldd_output"
+    ## Override library version for glibc if using ldd. The output is slightly different
+    if [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+        ## Extract the C library version - find the string after the last space on
+        ## line.
+        {
+            C_LIBRARY_VERSION="$(echo "$ldd_output" | $GREP -o '[^ ]*$')"
+        } || {
+            ## Do not log the error here. The error will be caught in the parent
+            ## function by testing for an empty C_LIBRARY_VERSION.
+            return
+        }
+    fi
 }
 
 ################################################################################
@@ -178,27 +177,42 @@ parse_ldd_output() {
 parse_libc_output() {
     local libc_info="$1"
     local c_library
+    local pattern_to_remove="[vV]ersion "
 
-    ## Extract the first line from the output
-    local libc_output="$(echo "$libc_info" | $HEAD -n 1)"
+    ## Extract the first two lines from the output
+    local libc_output="$(echo "$libc_info" | $HEAD -n 2)"
 
-    ## Find the C library - find a string enclosed in parathesis
-    {
-        c_library="$(echo $libc_output | $GREP -o '(.*)')"
-    } && {
-        remove_parantheses "$c_library"
-        C_LIBRARY="$STRING_WITHOUT_PARATHESIS"
-    } || {
-        ## Do not log the error here. The error will be caught in the parent
-        ## function by testing for an empty C_LIBRARY.
-        return
-    }
+    lower_case_string "$libc_output"
+    ## Check which flavor of libc is being used and parse output accordingly
+    if [ -z "${LOWER_CASE_STRING##*$MUSL_LIBC_PATTERN*}" ]; then
+        
+        ## Musl Libc
+        {
+            C_LIBRARY="$(echo "$libc_output" | $HEAD -n 1)"
+        } || {
+            ## Do not log the error here. The error will be caught in the parent
+            ## function by testing for an empty C_LIBRARY.
+            return
+        }
+    elif [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+        ## GLibc
+        ## Find the C library - find a string enclosed in parathesis
+        {
+            c_library="$(echo "$libc_output" | $HEAD -n 1 | $GREP -o '(.*)')"
+        } && {
+            remove_parantheses "$c_library"
+            C_LIBRARY="$STRING_WITHOUT_PARATHESIS"
+        } || {
+            ## Do not log the error here. The error will be caught in the parent
+            ## function by testing for an empty C_LIBRARY.
+            return
+        }
+    fi
 
     ## Extract the C library version - find a string of word characters and
     ## period, after the string 'version '.
-    local pattern_to_remove="version "
     {
-        C_LIBRARY_VERSION="$(echo $libc_output | $GREP -o "version [0-9\.]*")"
+        C_LIBRARY_VERSION="$(echo $libc_output | $GREP -o "${pattern_to_remove}[0-9\.]*")"
     } || {
         ## Do not log the error here. The error will be caught in the parent
         ## function by testing for an empty C_LIBRARY_VERSION.
@@ -226,14 +240,12 @@ get_libc_info_from_executable() {
     local message
     local libc_info
 
-    ## Find the paths under /lib* where libc.so.6 could be present
-    local libc_path="$($FIND /lib* -name 'libc.so.6' 2>/dev/null | $HEAD -n 1)"
+    ## Find the paths under /lib* where libc.so* could be present
+    local libc_path="$($FIND /lib* -name 'libc.so*' 2>/dev/null | $HEAD -n 1)"
 
-    ## Execute libc.so.6
+    ## Execute libc.so*
     {
         $TEST -n "$libc_path"
-    } && {
-        libc_info="$($libc_path)"
     } || {
         message="Failed to find the version of C library running on the device."
         message="$message\nYou could be using a very old version of C library."
@@ -241,7 +253,10 @@ get_libc_info_from_executable() {
         add_to_errors "$message"
         return
     }
-
+    ## On devices with musl libc executing the shared library without arguments will always return 1
+    ## and thus cannot be put into the above conditional checks
+    libc_info=`${libc_path} 2>&1`
+    
     ## Parse the output of libc.so.6
     parse_libc_output "$libc_info"
 }
@@ -252,22 +267,59 @@ get_libc_info_from_executable() {
 ################################################################################
 check_libc_version() {
     local message
-    local libc_version="$1"
+    local libc_flavor="$1"
+    local libc_version="$2"
 
-    sanitize_version_string "$libc_version"
-    libc_version="$SANITIZED_VERSION_STRING"
-
-    compare_versions "$libc_version" "$MINIMUM_REQUIRED_LIBC_VERSION"
-    if [ $GREATER_OR_EQUALS -ne 1 ]
-    then
-        wrap_bad "C library version" "$libc_version"
-        message="Greengrass requires C library version"
-        message="$message $MINIMUM_REQUIRED_LIBC_VERSION or greater to run"
-        add_to_dependency_failures "$message"
-        return
+    lower_case_string "$libc_flavor"
+    if [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+        compare_versions "$libc_version" "$MINIMUM_REQUIRED_GLIBC_VERSION"
+        if [ $GREATER_OR_EQUALS -ne 1 ]
+        then
+            wrap_bad "C library version" "$libc_version"
+            message="Greengrass requires GNU C library version"
+            message="$message $MINIMUM_REQUIRED_GLIBC_VERSION or greater to run"
+            add_to_dependency_failures "$message"
+            return
+        fi
+    elif [ -z "${LOWER_CASE_STRING##*$MUSL_LIBC_PATTERN*}" ]; then
+        compare_versions "$libc_version" "$MINIMUM_REQUIRED_MUSL_LIBC_VERSION"
+        if [ $GREATER_OR_EQUALS -ne 1 ]
+        then
+            wrap_bad "C library version" "$libc_version"
+            message="Greengrass requires musl C library version"
+            message="$message $MINIMUM_REQUIRED_MUSL_LIBC_VERSION or greater to run"
+            add_to_dependency_failures "$message"
+            return
+        fi
     fi
 
     wrap_info "C library version" "$libc_version"
+}
+
+################################################################################
+## Checks if the version of C library on the device meets the Greengrass core
+## requirements.
+################################################################################
+check_libc_flavor() {
+    local message
+    local libc_flavor="$1"
+
+    lower_case_string "$libc_flavor"
+    if [ "$DEVICE_OS" = "$OPENWRT" ]; then
+        ## Musl libc is required for openwrt
+        if [ -n "${LOWER_CASE_STRING##*$MUSL_LIBC_PATTERN*}" ]; then
+            wrap_bad "C library" "$libc_flavor"
+            message="Greengrass requires C library flavor"
+            message="$message musl libc to run on the $OPENWRT platform"
+            add_to_dependency_failures "$message"
+            return
+        fi
+    elif [ -n "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+        wrap_bad "C library" "$libc_flavor"
+        message="Greengrass requires GNU C library"
+        add_to_dependency_failures "$message"
+        return
+    fi
 }
 
 ################################################################################
@@ -280,27 +332,27 @@ get_libc_info() {
 
     if [ -z "${os_info_output##*"OpenWrt"*}" ]
     then
-        echo "Glibc is not a requirement for Openwrt. Skipping glibc check."
+        DEVICE_OS="$OPENWRT"
+    fi
+
+    { ## Try getting the C library info from 'ldd --version'
+        libc_info="$(ldd --version 2>/dev/null)" && parse_ldd_output "$libc_info"
+    } || { ## Fallback - run the executable 'libc.so*' to get the C library info
+        get_libc_info_from_executable
+    } || {
+        error "Could not find the version of C library running on the device"
+        add_to_errors "Could not find the version of C library running on the device"
+        return
+    }
+
+    if [ "$C_LIBRARY" = "" -o "$C_LIBRARY_VERSION" = "" ]
+    then
+        error "Failed to find information about the C library running on the device"
+        add_to_errors "Failed to find information about the C library running on the device"
     else
-
-        { ## Try getting the C library info from 'ldd --version'
-            libc_info="$(ldd --version 2>/dev/null)" && parse_ldd_output "$libc_info"
-        } || { ## Fallback - run the executable 'libc.so.6' to get the C library info
-            get_libc_info_from_executable
-        } || {
-            error "Could not find the version of C library running on the device"
-            add_to_errors "Could not find the version of C library running on the device"
-            return
-        }
-
-        if [ "$C_LIBRARY" = "" -o "$C_LIBRARY_VERSION" = "" ]
-        then
-            error "Failed to find information about the C library running on the device"
-            add_to_errors "Failed to find information about the C library running on the device"
-        else
-            wrap_info "C library" "$C_LIBRARY"
-            check_libc_version "$C_LIBRARY_VERSION"
-        fi
+        wrap_info "C library" "$C_LIBRARY"
+        check_libc_flavor "$C_LIBRARY"
+        check_libc_version "$C_LIBRARY" "$C_LIBRARY_VERSION"
     fi
 }
 
