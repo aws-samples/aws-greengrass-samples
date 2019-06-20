@@ -9,6 +9,7 @@ DEVICE_OS=""
 
 OPENWRT="openwrt"
 GLIBC_PATTERN="glib"
+GNU_LIBC_PATTERN="gnu lib"
 MUSL_LIBC_PATTERN="musl"
 ################################################################################
 ## Prints the kernel architecture.
@@ -137,15 +138,13 @@ check_kernel_version() {
 ################################################################################
 parse_ldd_output() {
     local libc_info="$1"
-
     parse_libc_output "$libc_info"
-
+    
     ## Extract the first line from the output
     local ldd_output="$(echo "$libc_info" | $HEAD -n 1)"
-
     lower_case_string "$ldd_output"
     ## Override library version for glibc if using ldd. The output is slightly different
-    if [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+    if [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ] || [ -z "${LOWER_CASE_STRING##*$GNU_LIBC_PATTERN*}"] ; then
         ## Extract the C library version - find the string after the last space on
         ## line.
         {
@@ -194,7 +193,7 @@ parse_libc_output() {
             ## function by testing for an empty C_LIBRARY.
             return
         }
-    elif [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+    elif [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ] || [ -z "${LOWER_CASE_STRING##*$GNU_LIBC_PATTERN*}" ]; then
         ## GLibc
         ## Find the C library - find a string enclosed in parathesis
         {
@@ -271,7 +270,7 @@ check_libc_version() {
     local libc_version="$2"
 
     lower_case_string "$libc_flavor"
-    if [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+    if [ -z "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ] || [ -z "${LOWER_CASE_STRING##*$GNU_LIBC_PATTERN*}" ]; then
         compare_versions "$libc_version" "$MINIMUM_REQUIRED_GLIBC_VERSION"
         if [ $GREATER_OR_EQUALS -ne 1 ]
         then
@@ -314,7 +313,7 @@ check_libc_flavor() {
             add_to_dependency_failures "$message"
             return
         fi
-    elif [ -n "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ]; then
+    elif [ -n "${LOWER_CASE_STRING##*$GLIBC_PATTERN*}" ] && [ -n "${LOWER_CASE_STRING##*$GNU_LIBC_PATTERN*}" ]; then
         wrap_bad "C library" "$libc_flavor"
         message="Greengrass requires GNU C library"
         add_to_dependency_failures "$message"

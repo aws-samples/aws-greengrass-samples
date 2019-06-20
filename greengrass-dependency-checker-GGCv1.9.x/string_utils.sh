@@ -130,7 +130,7 @@ sanitize_version_string() {
     minor_version="${minor_version%%.*}"
 
     patch_version="${full_version##$major_version.$minor_version.}"
-    if [[ "$full_version" = "$patch_version" ]]
+    if [ "$full_version" = "$patch_version" ]
     then
         patch_version="0"
     else

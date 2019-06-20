@@ -12,7 +12,7 @@ set -eu
 . ./check_ggc_user_and_group.sh
 . ./check_script_dependencies.sh
 
-GGC_VERSION="1.9.0"
+GGC_VERSION="1.9.x"
 KERNEL_CONFIG_FILE=""
 SCRIPT_USAGE_GUIDE="usage.txt"
 
