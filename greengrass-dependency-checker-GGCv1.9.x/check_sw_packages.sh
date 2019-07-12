@@ -200,6 +200,13 @@ check_ota_agent_req() {
     check_if_command_present "df"
     check_if_command_present "grep"
     check_if_command_present "umount"
+    check_if_command_present "mv"
+    check_if_command_present "gzip"
+    check_if_command_present "mkdir"
+    check_if_command_present "rm"
+    check_if_command_present "ln"
+    check_if_command_present "cat"
+    check_if_command_present "cut"
 }
 
 check_sw_packages() {

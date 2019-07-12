@@ -181,3 +181,10 @@ otherwise.
      * `df`
      * `grep`
      * `umount`
+     * `mv`
+     * `gzip`
+     * `mkdir`
+     * `rm`
+     * `ln`
+     * `cut`
+     * `cat`
