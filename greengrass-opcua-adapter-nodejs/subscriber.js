@@ -1,11 +1,13 @@
 'use strict';
 
 require('requirish')._(module);
+var opcuaauth = require('./config')
 const util = require('util');
 const EventEmitter = require('events');
 
 let Opcua;
 let IoTDevice;
+
 
 class OPCUASubscriber {
     constructor(client, serverConfig, monitoredItemsConfig) {
@@ -15,14 +17,14 @@ class OPCUASubscriber {
         const self = this;
         this.on('connect', () => {
             self.createSession();
-        }); 
+        });
         this.on('session_create', () => {
             self.createSubscription();
-        }); 
+        });
         this.on('subscribe', () => {
             self.monitorNodes();
-        }); 
-    }   
+        });
+    }
 
     connect() {
         const self = this;
@@ -30,16 +32,17 @@ class OPCUASubscriber {
             if (connectError) {
                 console.log('Got an error connecting to ', self._serverConfig.url, ' Err: ', connectError);
                 return;
-            }  
+            }
             self.emit('connect');
-        }); 
-    }   
+        });
+    }
 
 
     createSession() {
-        const userIdentity = null;
+    var opcuaauthuserauth = opcuaauth;
+
         const self = this;
-        self._client.createSession(userIdentity, (createSessionError, session) => {
+        self._client.createSession(opcuaauthuserauth, (createSessionError, session) => {
             if (!createSessionError) {
                 self._session = session;
                 console.log('Session created');
@@ -47,6 +50,7 @@ class OPCUASubscriber {
                 self.emit('session_create');
             } else {
                 console.log('Err: ', createSessionError);
+               
             }
         });
     }
@@ -86,17 +90,21 @@ class OPCUASubscriber {
                     samplingInterval: 250,
                     queueSize: 10000,
                     discardOldest: true,
-                });
+                },
+                Opcua.read_service.TimestampsToReturn.Both
+                );
             monitoredItem.on('initialized', () => {
                 console.log('monitoredItem initialized');
             });
             monitoredItem.on('changed', (dataValue) => {
                 const monitoredNodeName = monitoredNode.name;
                 const serverName = self._serverConfig.name;
+                const time = dataValue.sourceTimestamp;
                 const nodeId = monitoredItem.itemToMonitor.nodeId.toString();
                 const payload = {
                     id: nodeId,
-                    value: dataValue.value,
+                    value: dataValue.value.value,
+                    timestamp: time,
                 };
 
                 const topic = `/opcua/${serverName}/node/${monitoredNodeName}`;
