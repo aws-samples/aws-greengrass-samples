@@ -1,7 +1,7 @@
 'use strict';
 
 require('requirish')._(module);
-var opcuaauth = require('./config')
+const opcuaauth = require('./config')
 const util = require('util');
 const EventEmitter = require('events');
 
@@ -39,7 +39,7 @@ class OPCUASubscriber {
 
 
     createSession() {
-    var opcuaauthuserauth = opcuaauth;
+    const opcuaauthuserauth = opcuaauth;
 
         const self = this;
         self._client.createSession(opcuaauthuserauth, (createSessionError, session) => {
