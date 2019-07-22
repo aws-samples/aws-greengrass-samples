@@ -86,16 +86,20 @@ class OPCUASubscriber {
                     samplingInterval: 250,
                     queueSize: 10000,
                     discardOldest: true,
-                });
+                },
+                Opcua.read_service.TimestampsToReturn.Both
+            );
             monitoredItem.on('initialized', () => {
                 console.log('monitoredItem initialized');
             });
             monitoredItem.on('changed', (dataValue) => {
                 const monitoredNodeName = monitoredNode.name;
                 const serverName = self._serverConfig.name;
+                const time = dataValue.sourceTimestamp;
                 const nodeId = monitoredItem.itemToMonitor.nodeId.toString();
                 const payload = {
                     id: nodeId,
+                    timestamp: time,
                     value: dataValue.value,
                 };
 
