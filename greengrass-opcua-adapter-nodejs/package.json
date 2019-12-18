@@ -1,5 +1,0 @@
-{
-    "dependencies" : {
-        "node-opcua" : "0.0.65"
-    }
-}
