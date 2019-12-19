@@ -21,11 +21,6 @@ This folder contains a set of functions that demonstrate a traffic light example
 It also contains a Lambda function that collects data from the traffic light system and sends it to an AWS DynamoDB table.
 Refer to the Greengrass Getting Started Guide, Modules 5 and 6: http://docs.aws.amazon.com/greengrass/latest/developerguide/gg-gs.html
 
-## greengrass-opcua-adapter-nodejs
-
-This folder contains a sample NodeJS Lambda function that will connect to a preconfigured list of OPC-UA servers, and monitor configured NodeIds for changes. If a monitor node's value changes, this lambda get notified, and republishes that value change onto a specific topic.
-Refer to this documentation page for more details: http://docs.aws.amazon.com/greengrass/latest/developerguide/opcua.html
-
 ## iot-blog
 
 This folder contains examples and resources that accompany posts on the AWS IoT blog.
