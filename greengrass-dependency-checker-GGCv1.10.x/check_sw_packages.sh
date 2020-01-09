@@ -1,7 +1,7 @@
 JAVA_VERSION=""
 REQUIRED_PYTHON2_VERSION="2.7"
 REQUIRED_PYTHON3_VERSION="3.7"
-REQUIRED_NODEJS_VERSION="8.10"
+REQUIRED_NODEJS_VERSION="12.x"
 REQUIRED_JAVA_VERSION="8"
 
 no_op() {
@@ -90,6 +90,7 @@ check_python3_version() {
 check_nodejs_version() {
     local node_version_info
     local node_version
+    local node_major_version
     local message="Could not find the binary 'nodejs$REQUIRED_NODEJS_VERSION'.\n"
     message="$message\nIf NodeJS $REQUIRED_NODEJS_VERSION or later is installed"
     message="$message on the device, name the binary 'nodejs$REQUIRED_NODEJS_VERSION'"
@@ -106,9 +107,17 @@ check_nodejs_version() {
     }
 
     node_version="$(echo ${node_version_info#v})"
+    node_major_version="$(echo ${node_version%.*.*})"
     if [ -n "$node_version" ]
     then
+      if [ "$node_major_version" = ${REQUIRED_NODEJS_VERSION%.*} ]
+      then
         wrap_good "NodeJS version" "$node_version"
+      else
+        message="Expected NodeJS $REQUIRED_NODEJS_VERSION, found NodeJS $node_version"
+        warn "$message"
+        add_to_warnings "$message"
+      fi
     else
         message="Failed to extract the NodeJS version from the string: '$node_version_info'"
         warn "$message"
