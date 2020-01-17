@@ -217,6 +217,7 @@ check_ota_agent_req() {
     check_if_command_present "ln"
     check_if_command_present "cat"
     check_if_command_present "cut"
+    check_if_command_present "/bin/bash"
 }
 
 check_sw_packages() {
