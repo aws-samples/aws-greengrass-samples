@@ -9,7 +9,7 @@ DEVICE_OS=""
 
 OPENWRT="openwrt"
 GLIBC_PATTERN="glib"
-GNU_LIBC_PATTERN="gnu lib"
+GNU_LIBC_PATTERN="gnu"
 MUSL_LIBC_PATTERN="musl"
 ################################################################################
 ## Prints the kernel architecture.
