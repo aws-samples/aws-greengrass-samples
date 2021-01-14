@@ -19,9 +19,6 @@ readonly NC="\033[0m"    # No color
 ## Default verbosity
 VERBOSITY=$WARN
 
-## Default to color output
-COLOR=1
-
 ## Exit code for the script
 SCRIPT_EXIT_CODE=0
 
@@ -88,37 +85,20 @@ set_verbosity() {
     fi
 }
 
-turn_off_color() {
-    COLOR=0
-}
-
 log() {
     local log_level="$1"
     local color="$2"
     local message="$3"
     local new_line="$4"
-    local reset_color_formatting="${NC}"
-    local format_string="%b"
-    
-    if [ $COLOR -eq 0 ]
-        then
-            reset_color_formatting=""
-            color=""
-    fi
-
-    if [ $new_line -eq 1 ]
-        then
-            format_string="%b\n"
-    fi
 
     if [ $log_level -le $VERBOSITY ]
     then
-        $PRINTF "$format_string" "${color}$message${reset_color_formatting}"
+        $PRINTF "${color}$message${NC}"
+        if [ $new_line -eq 1 ]
+        then
+            $PRINTF "\n"
+        fi
     fi
-}
-
-newline() {
-    $PRINTF "%s\n"
 }
 
 label() {
