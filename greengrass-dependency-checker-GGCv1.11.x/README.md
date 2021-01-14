@@ -25,6 +25,7 @@ sudo ./check_ggc_dependencies [options]
 
 --log-level | -log-level                    : DEBUG, WARN (default), INFO, ERROR or FATAL
 -h | --help | -help                         : Prints the script usage
+-n | --no-color | -no-color                 : Disables color text in output.
 -v | --version | -version                   : Prints the version of Greengrass core for which the script checks dependencies
 --kernel-config-file | -kernel-config-file  : The absolute/relative path of the kernel config file on the device
 
@@ -136,11 +137,12 @@ otherwise.
     * CONFIG_KEYS
     * CONFIG_SECCOMP
     * CONFIG_SHMEM
+    * CONFIG_INOTIFY_USER
 
 * **Software packages**
-  * `Python 2.7 or Python 3.7`  
+  * `Python 2.7 or Python 3.7/3.8`  
   Required if Python lambdas are used. The binaries must be named 'python2.7'
-  and 'python3.7' respectively and the parent directory must be added to the 
+  and 'python3.7' or 'python3.8' respectively and the parent directory must be added to the 
   PATH environment variable.
   * `NodeJS 12.x or greater`
   Required if NodeJS lambdas are used. The binary must be named 'nodejs12.x'

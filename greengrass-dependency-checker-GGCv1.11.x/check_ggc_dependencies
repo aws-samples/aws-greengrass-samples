@@ -21,6 +21,7 @@ print_help() {
     echo "sudo ./check_ggc_dependencies"
     echo "    [ --log-level  <LOG_LEVEL> | -log-level <LOG_LEVEL> ]"
     echo "    [ -h | --help | -help ]"
+    echo "    [ -n | --no-color | -no-color ]"
     echo "    [ -v | --version | -version ]"
     echo "    [ --kernel-config-file  <KERNEL_CONFIG_PATH>  | -kernel-config-file  <KERNEL_CONFIG_PATH> ]"
     echo ""
@@ -54,6 +55,10 @@ parse_cmdline() {
                 ## check dependencies
                 $PRINTF "Greengrass core version: $GGC_VERSION\n"
                 exit 0
+                ;;
+
+            -n | --no-color | -no-color )
+                turn_off_color
                 ;;
 
             --kernel-config-file | -kernel-config-file )
