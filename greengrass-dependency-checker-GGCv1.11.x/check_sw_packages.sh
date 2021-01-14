@@ -1,7 +1,6 @@
 JAVA_VERSION=""
 REQUIRED_PYTHON2_VERSION="2.7"
-REQUIRED_PYTHON37_VERSION="3.7"
-REQUIRED_PYTHON38_VERSION="3.8"
+REQUIRED_PYTHON3_VERSION="3.7"
 REQUIRED_NODEJS_VERSION="12.x"
 REQUIRED_JAVA_VERSION="8"
 
@@ -39,7 +38,7 @@ check_python2_version() {
     then
         wrap_good "Python 2.7 version" "$python_version"
     else
-        message="Failed to extract the Python 2.7 version from the string:"
+        message="Failed to extract the Python version from the string:"
         message="$message '$python_version_info'"
         warn "$message"
         add_to_warnings "$message"
@@ -47,83 +46,39 @@ check_python2_version() {
 }
 
 ################################################################################
-## Checks if either Python 3.7 or 3.8 is installed on the device and if installed,
-## whether its version meets the requirement for Greengrass lambdas.
+## Checks if Python 3.7 is installed on the device and if installed, whether its
+## version meets the requirement for Greengrass lambdas.
 ################################################################################
 check_python3_version() {
     local python_version_info
     local python_version
-    local python37_IS_FOUND
-    local python38_IS_FOUND
-
-    # Python3.7 check
-    local message="Could not find the binary 'python$REQUIRED_PYTHON37_VERSION'.\n"
-    message="$message\nIf Python $REQUIRED_PYTHON37_VERSION is installed on the"
-    message="$message device, name the binary 'python$REQUIRED_PYTHON37_VERSION'"
+    local message="Could not find the binary 'python$REQUIRED_PYTHON3_VERSION'.\n"
+    message="$message\nIf Python $REQUIRED_PYTHON3_VERSION is installed on the"
+    message="$message device, name the binary 'python$REQUIRED_PYTHON3_VERSION'"
     message="$message and add its parent \ndirectory to the PATH environment variable."
-    message="$message Python $REQUIRED_PYTHON37_VERSION is required to execute Python 3.7"
+    message="$message Python $REQUIRED_PYTHON3_VERSION is required to execute Python 3.7"
     message="$message\nlambdas on Greengrass core."
 
     {
         ## Python reports the version to STDERR, so have to redirect STDERR to
         ## STDOUT and not capture the output in a variable.
-        python$REQUIRED_PYTHON37_VERSION --version >/dev/null 2>&1 && python37_IS_FOUND=true
+        python$REQUIRED_PYTHON3_VERSION --version >/dev/null 2>&1
     } || {
-        wrap_warn "Python $REQUIRED_PYTHON37_VERSION" "Not found"
+        wrap_warn "Python $REQUIRED_PYTHON3_VERSION" "Not found"
         add_to_dependency_warnings "$message"
+        return
     }
 
-    # Python3.8 check
-    message="Could not find the binary 'python$REQUIRED_PYTHON38_VERSION'.\n"
-    message="$message\nIf Python $REQUIRED_PYTHON38_VERSION is installed on the"
-    message="$message device, name the binary 'python$REQUIRED_PYTHON38_VERSION'"
-    message="$message and add its parent \ndirectory to the PATH environment variable."
-    message="$message Python $REQUIRED_PYTHON38_VERSION is required to execute Python 3.8"
-    message="$message\nlambdas on Greengrass core."
-    {
-        ## Python reports the version to STDERR, so have to redirect STDERR to
-        ## STDOUT and not capture the output in a variable.
-        python$REQUIRED_PYTHON38_VERSION --version >/dev/null 2>&1 && python38_IS_FOUND=true
-    } || {
-        wrap_warn "Python $REQUIRED_PYTHON38_VERSION" "Not found"
-        add_to_dependency_warnings "$message"
-    }
-
-    if [ -z "$python37_IS_FOUND" ] && [ -z "$python38_IS_FOUND" ]
+    python_version_info="$(python$REQUIRED_PYTHON3_VERSION --version 2>&1)"
+    python_version="$(echo $python_version_info | $CUT -d" " -f2)"
+    if [ -n "$python_version_info" ]
     then
-      return
-    fi
-
-    ## Python3.7
-    if [[ $python37_IS_FOUND ]]
-    then
-      python_version_info="$(python$REQUIRED_PYTHON37_VERSION --version 2>&1)"
-      python_version="$(echo $python_version_info | $CUT -d" " -f2)"
-      if [ -n "$python_version_info" ]
-      then
-          wrap_good "Python 3.7 version" "$python_version"
-      else
-          message="Failed to extract the Python 3.7 version from the string:"
-          message="$message '$python_version_info'"
-          warn "$message"
-          add_to_warnings "$message"
-      fi
-    fi
-
-    ## Python3.8
-    if [[ $python38_IS_FOUND ]]
-    then
-      python_version_info="$(python$REQUIRED_PYTHON38_VERSION --version 2>&1)"
-      python_version="$(echo $python_version_info | $CUT -d" " -f2)"
-      if [ -n "$python_version_info" ]
-      then
-          wrap_good "Python 3.8 version" "$python_version"
-      else
-          message="Failed to extract the Python 3.8 version from the string:"
-          message="$message '$python_version_info'"
-          warn "$message"
-          add_to_warnings "$message"
-      fi
+        wrap_good "Python 3.7 version" "$python_version"
+    else
+        message="Failed to extract the Python version from the string:"
+        message="$message '$python_version_info'"
+        warn "$message"
+        add_to_warnings "$message"
     fi
 }
 
