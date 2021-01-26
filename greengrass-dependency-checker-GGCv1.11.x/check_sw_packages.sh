@@ -53,8 +53,8 @@ check_python2_version() {
 check_python3_version() {
     local python_version_info
     local python_version
-    local python37_IS_FOUND
-    local python38_IS_FOUND
+    local python37_IS_FOUND=false
+    local python38_IS_FOUND=false
 
     # Python3.7 check
     local message="Could not find the binary 'python$REQUIRED_PYTHON37_VERSION'.\n"
@@ -89,13 +89,13 @@ check_python3_version() {
         add_to_dependency_warnings "$message"
     }
 
-    if [ -z "$python37_IS_FOUND" ] && [ -z "$python38_IS_FOUND" ]
+    if [ "$python37_IS_FOUND" = false ] && [ "$python38_IS_FOUND" = false ]
     then
       return
     fi
 
     ## Python3.7
-    if [[ $python37_IS_FOUND ]]
+    if [ "$python37_IS_FOUND" = true ]
     then
       python_version_info="$(python$REQUIRED_PYTHON37_VERSION --version 2>&1)"
       python_version="$(echo $python_version_info | $CUT -d" " -f2)"
@@ -111,7 +111,7 @@ check_python3_version() {
     fi
 
     ## Python3.8
-    if [[ $python38_IS_FOUND ]]
+    if [ "$python38_IS_FOUND" = true ]
     then
       python_version_info="$(python$REQUIRED_PYTHON38_VERSION --version 2>&1)"
       python_version="$(echo $python_version_info | $CUT -d" " -f2)"
