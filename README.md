@@ -4,10 +4,10 @@ AWS Greengrass Samples
 
 These samples are made available under a modified MIT license. See the LICENSE file.
 
-## greengrass-dependency-checker
+## greengrass-dependency-checker - Greengrass V1 only, does not apply to Greengrass V2
 
-This folder contains tools that help you check for system-level dependencies that Greengrass requires to be run.
-Refer to the requirements outlined in the Greengrass Documentation, as well as the Greengrass Getting Started Guide, Module 1:
+This folder contains tools that help you check for system-level dependencies that Greengrass V1 requires to be run.
+Refer to the requirements outlined in the Greengrass Documentation, as well as the Greengrass V1 Getting Started Guide, Module 1:
 http://docs.aws.amazon.com/greengrass/latest/developerguide/gg-gs.html
 
 ## hello-world-python
